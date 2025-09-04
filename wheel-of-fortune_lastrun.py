@@ -31,7 +31,8 @@ import os  # handy system and path functions
 import sys  # to get file system encoding
 
 import psychopy.iohub as io
-from psychopy.hardware import keyboard
+from psychopy.hardware import keyboard # psychopy keyboard module used, rather than standard
+# here's the documentation: https://www.psychopy.org/api/hardware/keyboard.html
 
 # --- Setup global variables (available in all functions) ---
 # Ensure that relative paths start from the same directory as this script
@@ -42,7 +43,10 @@ expName = 'wheel-of-fortune'  # from the Builder filename that created this scri
 expInfo = {
     'participant': f"{randint(0, 999999):06.0f}",
     'session': '001',
-    'inertia (0 to 100)': '0',
+    # tip: once you've set the the wheel to trigger by keyboard, try fiddling with inertia
+    # Because it's not the physics that is the problem here, but the faff with the mouse triggering it
+    # A non zero inertia value may feel more authentic
+    'inertia (0 to 100)': '99',
     'date': data.getDateStr(),  # add a simple timestamp
     'expName': expName,
     'psychopyVersion': psychopyVersion,
@@ -259,8 +263,13 @@ def pauseExperiment(thisExp, inputs=None, win=None, timers=[], playbackComponent
                 'defaultKeyboard': keyboard.Keyboard(backend='ioHub')
             }
         # check for quit (typically the Esc key)
+        # tip; the below line might be useful to copy the syntax from
         if inputs['defaultKeyboard'].getKeys(keyList=['escape']):
             endExperiment(thisExp, win=win, inputs=inputs)
+        # for example, if you wanted to use space to start it, you might use 
+        #if inputs['defaultKeyboard'].getKeys(keyList=['space']):
+            # {do the thing}
+        
         # flip the screen
         win.flip()
     # if stop was requested while paused, quit
@@ -430,8 +439,33 @@ def run(expInfo, thisExp, win, inputs, globalClock=None, thisSession=None):
                     oldAngle = 180/pi * atan((mouseRec[1]-origin[1])/(mouseRec[0]-origin[0]))
                 changeAngle = oldAngle - newAngle
             mouseRec = mouse.getPos()
-        elif frameN%frameCheck == 0:
-            changeAngle = changeAngle * inertia
+        if frameN%frameCheck == 0:
+            changeAngle = 10 * inertia
+        """
+        previously, it said "changeAngle = changeAngle * inertia"
+        this means "however much the user moved the wheel with their mouse, multiple that with inertia 
+        and that's how much the wheel moves by itself when it spins after being let go.
+
+        So if I use my mouse to make the wheel turn by 40 degrees, and the inertia is set to 50 (out of 100)
+        then the next frame would make it move by 40*0.5 = 20 degrees
+        then next frame, it would move by 20 * 0.5 = 10 degrees
+        and then 10 * 0.5 = 5 degrees
+        and so on until the wheel comes to a stop. an inertia value of 100 will make it spin forever
+
+        rather than taking input from the mouse, I set a constant amount of spin, and stored it in the "rotateAngle" variable
+        I picked the starting value as 10 somewhat arbitrarily, so tweak it as you test it.
+
+        when you've verified this works properly, you'll probably want to determine this using a random number in range
+
+        """
+        rotateAngle = 10
+
+        if frameN%frameCheck == 0:
+            changeAngle = rotateAngle * inertia
+        # framecheck is about how often the graphics update. not sure if this bit is needed, but I left it in from the old code
+        # n.b. in python, % means "modulo", which means "the remainder when dividing"
+        # e.g. 10 % 3 == 1, 10 % 4 == 2, and 10 % 5 == 0
+        # So I think the framecheck bit just checks so it only updates when the current frame number is divisible by the frame rate
         thisOri = thisOri + changeAngle
         
         # *bg_circle* updates
@@ -455,7 +489,9 @@ def run(expInfo, thisExp, win, inputs, globalClock=None, thisSession=None):
             pass
         
         # *wheel* updates
-        
+
+        # below is possibly relevant for triggering wheel. 
+        # I haven't tinkered though, because I didn't want to break it
         # if wheel is starting this frame...
         if wheel.status == NOT_STARTED and tThisFlip >= 0.0-frameTolerance:
             # keep track of start time/frame for later
@@ -494,7 +530,8 @@ def run(expInfo, thisExp, win, inputs, globalClock=None, thisSession=None):
             # update params
             pass
         # *mouse* updates
-        
+
+        # The below chunk of code is possibly relevant for triggering the spin via keyboard
         # if mouse is starting this frame...
         if mouse.status == NOT_STARTED and t >= 0.0-frameTolerance:
             # keep track of start time/frame for later
